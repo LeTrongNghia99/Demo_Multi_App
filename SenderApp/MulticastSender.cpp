@@ -37,6 +37,25 @@ void MulticastSender::addTarget(const QString &ip, int port)
     qDebug() << "[Sender] Target added:" << groupIp << groupPort;
 }
 
+void MulticastSender::removeTarget(const QString &ip, int port)
+{
+    QString groupIp = ip.trimmed().isEmpty() ? "239.255.0.1" : ip;
+    int groupPort = (port <= 0) ? 6000 : port;
+    QHostAddress addr(groupIp);
+    bool removed = false;
+    for (int i = 0; i < m_targets.size(); ++i) {
+        if (m_targets[i].first == addr && m_targets[i].second == groupPort) {
+            m_targets.removeAt(i);
+            qDebug() << "[Sender] Target removed:" << groupIp << groupPort;
+            removed = true;
+            break;
+        }
+    }
+    if (!removed) {
+        qDebug() << "[Sender] Target not found to remove:" << groupIp << groupPort;
+    }
+}
+
 
 void MulticastSender::startMs1(const QString &content, int intervalMs)
 {

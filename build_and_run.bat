@@ -29,6 +29,9 @@ if not exist ReceiverApp_2\ReceiverApp_2.exe (
     goto error
 )
 
+REM Deploy Qt DLLs and QML for ReceiverApp_2
+"%QT_PATH%\bin\windeployqt.exe" Demo_Multi_App.exe
+
 REM Deploy Qt DLLs and QML for SenderApp
 "%QT_PATH%\bin\windeployqt.exe" SenderApp\SenderApp.exe
 
@@ -38,16 +41,14 @@ REM Deploy Qt DLLs and QML for ReceiverApp
 REM Deploy Qt DLLs and QML for ReceiverApp_2
 "%QT_PATH%\bin\windeployqt.exe" ReceiverApp_2\ReceiverApp_2.exe
 
-REM Run both apps (in background)
 
-REM Run SenderApp in new console window
-start "SenderApp" cmd /k SenderApp\SenderApp.exe
-
-REM Run ReceiverApp in new console window
-start "ReceiverApp" cmd /k ReceiverApp\ReceiverApp.exe
-
-REM Run ReceiverApp_2 in new console window
-start "ReceiverApp_2" cmd /k ReceiverApp_2\ReceiverApp_2.exe
+REM Run main app to manage all sub-apps
+if exist Demo_Multi_App.exe (
+    start "MainApp" cmd /k Demo_Multi_App.exe
+) else (
+    echo Demo_Multi_App.exe not found! Please build the main app target.
+    goto error
+)
 
 goto end
 

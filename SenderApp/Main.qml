@@ -4,10 +4,18 @@ import QtQuick.Layouts 1.15
 import Sender 1.0
 
 ApplicationWindow {
+
+    property bool receiver1Connected: false
+    property bool receiver2Connected: false
     visible: true
     width: 500
     height: 600
     title: "UDP Multicast Sender"
+
+    Rectangle {
+        anchors.fill: parent
+        color: "white" // Đặt màu nền là trắng
+    }
 
     MulticastSender {
         id: sender
@@ -25,23 +33,61 @@ ApplicationWindow {
                 RowLayout {
                     spacing: 8
                     Label { text: "Receiver 1 IP:" }
-                    TextField { id: ip1; width: 120; placeholderText: "224.0.0.1" }
+                    TextField {
+                        id: ip1
+                        width: 120
+                        placeholderText: "224.0.0.1"
+                        enabled: !receiver1Connected
+                    }
                     Label { text: "Port:" }
-                    TextField { id: port1; width: 70; inputMethodHints: Qt.ImhDigitsOnly; placeholderText: "5001" }
+                    TextField {
+                        id: port1
+                        width: 70
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        placeholderText: "5001"
+                        enabled: !receiver1Connected
+                    }
                     Button {
-                        text: "Connect Receiver 1"
-                        onClicked: sender.addTarget(ip1.text, parseInt(port1.text))
+                        text: receiver1Connected ? "Disconnect Receiver 1" : "Connect Receiver 1"
+                        onClicked: {
+                            if (!receiver1Connected) {
+                                sender.addTarget(ip1.text, parseInt(port1.text));
+                                receiver1Connected = true;
+                            } else {
+                                sender.removeTarget(ip1.text, parseInt(port1.text));
+                                receiver1Connected = false;
+                            }
+                        }
                     }
                 }
                 RowLayout {
                     spacing: 8
                     Label { text: "Receiver 2 IP:" }
-                    TextField { id: ip2; width: 120; placeholderText: "224.0.0.2" }
+                    TextField {
+                        id: ip2
+                        width: 120
+                        placeholderText: "224.0.0.2"
+                        enabled: !receiver2Connected
+                    }
                     Label { text: "Port:" }
-                    TextField { id: port2; width: 70; inputMethodHints: Qt.ImhDigitsOnly; placeholderText: "5002" }
+                    TextField {
+                        id: port2
+                        width: 70
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        placeholderText: "5002"
+                        enabled: !receiver2Connected
+                    }
                     Button {
-                        text: "Connect Receiver 2"
-                        onClicked: sender.addTarget(ip2.text, parseInt(port2.text))
+                        text: receiver2Connected ? "Disconnect Receiver 2" : "Connect Receiver 2"
+                        onClicked: {
+                            if (!receiver2Connected) {
+                                sender.addTarget(ip2.text, parseInt(port2.text));
+                                receiver2Connected = true;
+                            } else {
+                                sender.removeTarget(ip2.text, parseInt(port2.text));
+                                receiver2Connected = false;
+                            }
+                        }
                     }
                 }
             }

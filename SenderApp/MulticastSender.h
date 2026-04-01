@@ -14,6 +14,7 @@ public:
     explicit MulticastSender(QObject *parent = nullptr);
 
     Q_INVOKABLE void addTarget(const QString &ip, int port);
+    Q_INVOKABLE void removeTarget(const QString &ip, int port);
     Q_INVOKABLE void startMs1(const QString &content, int intervalMs);
     Q_INVOKABLE void stopMs1();
     Q_INVOKABLE void startMs2(const QString &content, int intervalMs);

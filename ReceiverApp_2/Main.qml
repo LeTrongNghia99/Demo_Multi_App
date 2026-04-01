@@ -8,6 +8,10 @@ ApplicationWindow {
     height: 600
     title: "UDP Multicast Receiver 2"
 
+    Rectangle {
+        anchors.fill: parent
+        color: "white" // Đặt màu nền là trắng
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -32,8 +36,15 @@ ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             Button {
-                text: "Clear Log"
                 onClicked: logModel.clear()
+                contentItem: Text {
+                    text: "Clear Log"
+                    color: "black"
+                    font: control.font
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    anchors.fill: parent
+                }
             }
         }
 
