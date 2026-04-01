@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.16)
-project(Demo_MultiApp LANGUAGES CXX)
+project(DEMO_MULTI_APP LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
