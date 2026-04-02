@@ -1,3 +1,5 @@
+#include "Message.h"
+class Message;
 #pragma once
 
 #include <QObject>
@@ -29,8 +31,6 @@ private:
     QTimer m_timerMs1;
     QTimer m_timerMs2;
     QList<QPair<QHostAddress, quint16>> m_targets;
-    QString m_ms1Content;
-    int m_ms1Interval;
-    QString m_ms2Content;
-    int m_ms2Interval;
+    QList<Message*> m_messages; // Quản lý động các object Message
+
 };

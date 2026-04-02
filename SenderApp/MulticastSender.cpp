@@ -1,5 +1,6 @@
 
 #include "MulticastSender.h"
+#include "Message.h"
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -12,11 +13,19 @@ MulticastSender::MulticastSender(QObject *parent)
     qDebug() << "[Sender] MulticastSender constructed";
     connect(&m_timerMs1, &QTimer::timeout, this, [this]() {
         qDebug() << "[Sender] Timer MS1 timeout, sending message";
-        broadcastMessage("ms1", m_ms1Content, m_ms1Interval);
+        for (const Message* msg : m_messages) {
+            if (msg->msgId() == "ms1") {
+                broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
+            }
+        }
     });
     connect(&m_timerMs2, &QTimer::timeout, this, [this]() {
         qDebug() << "[Sender] Timer MS2 timeout, sending message";
-        broadcastMessage("ms2", m_ms2Content, m_ms2Interval);
+        for (const Message* msg : m_messages) {
+            if (msg->msgId() == "ms2") {
+                broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
+            }
+        }
     });
 }
 
@@ -60,10 +69,12 @@ void MulticastSender::removeTarget(const QString &ip, int port)
 void MulticastSender::startMs1(const QString &content, int intervalMs)
 {
     qDebug() << "[Sender] startMs1 called, content:" << content << ", intervalMs:" << intervalMs;
-    m_ms1Content = content;
-    m_ms1Interval = intervalMs;
+    // Tạo object Message động cho ms1
+    Message* msg = new Message("ms1", content, intervalMs);
+    m_messages.append(msg);
     m_timerMs1.start(intervalMs);
-    broadcastMessage("ms1", content, intervalMs); // Send immediately
+    // Gửi ngay message vừa tạo
+    broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
 }
 
 
@@ -71,16 +82,25 @@ void MulticastSender::stopMs1()
 {
     qDebug() << "[Sender] stopMs1 called";
     m_timerMs1.stop();
+    // Xóa các Message có msgId == "ms1"
+    for (int i = m_messages.size() - 1; i >= 0; --i) {
+        if (m_messages[i]->msgId() == "ms1") {
+            delete m_messages[i];
+            m_messages.removeAt(i);
+        }
+    }
 }
 
 
 void MulticastSender::startMs2(const QString &content, int intervalMs)
 {
     qDebug() << "[Sender] startMs2 called, content:" << content << ", intervalMs:" << intervalMs;
-    m_ms2Content = content;
-    m_ms2Interval = intervalMs;
+    // Tạo object Message động cho ms2
+    Message* msg = new Message("ms2", content, intervalMs);
+    m_messages.append(msg);
     m_timerMs2.start(intervalMs);
-    broadcastMessage("ms2", content, intervalMs); // Send immediately
+    // Gửi ngay message vừa tạo
+    broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
 }
 
 
@@ -88,23 +108,43 @@ void MulticastSender::stopMs2()
 {
     qDebug() << "[Sender] stopMs2 called";
     m_timerMs2.stop();
+    // Xóa các Message có msgId == "ms2"
+    for (int i = m_messages.size() - 1; i >= 0; --i) {
+        if (m_messages[i]->msgId() == "ms2") {
+            delete m_messages[i];
+            m_messages.removeAt(i);
+        }
+    }
 }
 
 
 void MulticastSender::sendMs3(const QString &content)
 {
     qDebug() << "[Sender] sendMs3 called, content:" << content;
-    broadcastMessage("ms3", content, 0);
+    // Tạo object Message động cho ms3 (one-time)
+    Message* msg = new Message("ms3", content, 0);
+    m_messages.append(msg);
+    broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
+    // Xóa ngay sau khi gửi
+    for (int i = m_messages.size() - 1; i >= 0; --i) {
+        if (m_messages[i]->msgId() == "ms3") {
+            delete m_messages[i];
+            m_messages.removeAt(i);
+        }
+    }
 }
 
 
 void MulticastSender::broadcastMessage(const QString &msgId, const QString &content, int intervalMs)
 {
-    QByteArray datagram = createJsonMessage(msgId, content, intervalMs);
-    qDebug() << "[Sender] broadcastMessage called, msgId:" << msgId << ", content:" << content << ", intervalMs:" << intervalMs << ", targets:" << m_targets.size();
-    for (const auto &target : m_targets) {
-        qDebug() << "[Sender] Sending datagram to" << target.first.toString() << ":" << target.second << ", data:" << datagram;
-        m_udpSocket.writeDatagram(datagram, target.first, target.second);
+    // Serialize tất cả message thành JSON và gửi
+    for (const Message* msg : m_messages) {
+        QByteArray datagram = QJsonDocument(msg->toJson()).toJson(QJsonDocument::Compact);
+        qDebug() << "[Sender] broadcastMessage called, msgId:" << msg->msgId() << ", content:" << msg->content() << ", intervalMs:" << msg->intervalMs() << ", targets:" << m_targets.size();
+        for (const auto &target : m_targets) {
+            qDebug() << "[Sender] Sending datagram to" << target.first.toString() << ":" << target.second << ", data:" << datagram;
+            m_udpSocket.writeDatagram(datagram, target.first, target.second);
+        }
     }
 }
 
