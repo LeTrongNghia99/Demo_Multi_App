@@ -13,7 +13,7 @@ public:
     enum Role{
         IdMsg = Qt::UserRole + 1,
         ContentRole,
-        IntervalRole,
+        IntervalRole
     };
     Q_ENUM(Role)
 
@@ -30,6 +30,7 @@ public:
     Q_INVOKABLE void deleteMessage(int idMsg);
     Q_INVOKABLE void startSendMessage(const int &idMsg , MulticastSender *multicastSender );
     Q_INVOKABLE void stopSendMessage(const int &idMsg, MulticastSender *multicastSender);
+    Q_INVOKABLE Message* getMessage(int idMsg);
 private:
     QList <Message*> m_messages;
     int m_id;

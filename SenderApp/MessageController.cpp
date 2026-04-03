@@ -111,4 +111,15 @@ void MessageController::stopSendMessage(const int &idMsg, MulticastSender *multi
     }
 }
 
+Message *MessageController::getMessage(int idMsg)
+{
+    auto it = std::find_if(m_messages.begin(), m_messages.end(), [idMsg](Message* message) {
+        return message->msgId() == idMsg;
+    });
+
+    if (it != m_messages.end())
+        return *it;
+    return nullptr;
+}
+
 

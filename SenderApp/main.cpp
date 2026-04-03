@@ -10,6 +10,9 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
 
     qmlRegisterType<MulticastSender>("Sender", 1, 0, "MulticastSender");
+    qmlRegisterType<Message>("Sender", 1, 0, "Message");
+    qmlRegisterType<CustomFieldModel>("Sender", 1, 0, "CustomFieldModel");
+    
     MessageController messageController;
     engine.rootContext()->setContextProperty("MessageController" , &messageController);
 

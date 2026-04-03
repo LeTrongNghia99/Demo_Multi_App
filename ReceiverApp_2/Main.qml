@@ -66,7 +66,7 @@ ApplicationWindow {
                     anchors.fill: parent
                     spacing: 8
                     Text { text: '[' + d_time + ']'; width: 120; color: "black" }
-                    Text { text: '[MSG_ID: ' + d_msgId + ']'; width: 80; color: "black" }
+                    Text { text: '[Msg_Id: ' + d_msgId + ']'; width: 80; color: "black" }
                     Text { text: 'Content: ' + d_content; elide: Text.ElideRight; width: parent.width - 220; color: "black" }
                 }
                 Component.onCompleted: {

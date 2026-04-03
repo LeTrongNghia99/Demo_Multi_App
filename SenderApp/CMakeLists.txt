@@ -22,6 +22,8 @@ qt_add_qml_module(${SENDER_APP_NAME}
         MessageController.cpp
         Message.h
         Message.cpp
+        SOURCES Customfield.h Customfield.cpp
+        SOURCES CustomFieldModel.h CustomFieldModel.cpp
 )
 
 install(TARGETS ${SENDER_APP_NAME} DESTINATION bin)
