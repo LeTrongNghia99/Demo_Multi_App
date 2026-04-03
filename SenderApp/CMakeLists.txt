@@ -16,6 +16,12 @@ target_link_libraries(${SENDER_APP_NAME}
 qt_add_qml_module(${SENDER_APP_NAME}
     URI SenderApp
     QML_FILES Main.qml
+    SOURCES
+    SOURCES
+        MessageController.h
+        MessageController.cpp
+        Message.h
+        Message.cpp
 )
 
 install(TARGETS ${SENDER_APP_NAME} DESTINATION bin)

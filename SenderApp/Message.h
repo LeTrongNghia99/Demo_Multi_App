@@ -1,26 +1,26 @@
 #pragma once
 #include <QString>
 #include <QJsonObject>
+#include <QTimer>
 
-class Message {
+class Message : public QObject{
+    Q_OBJECT
 public:
-    Message(const QString& msgId, const QString& content, int intervalMs)
-        : m_msgId(msgId), m_content(content), m_intervalMs(intervalMs) {}
+    Message(const int msgId, const QString& content, int intervalMs ,QObject *parent = nullptr );
 
-    QString msgId() const { return m_msgId; }
-    QString content() const { return m_content; }
-    int intervalMs() const { return m_intervalMs; }
+    int msgId() const;
+    QString content() const;
+    int intervalMs() const;
+    QTimer* timerMs() const;
 
-    QJsonObject toJson() const {
-        QJsonObject obj;
-        obj["msg_id"] = m_msgId;
-        obj["content"] = m_content;
-        obj["interval_ms"] = m_intervalMs;
-        return obj;
-    }
+    void setContent(const QString& content);
+    void setIntervalMs(int intervalMs);
+
+    // Q_INVOKABLE void startSendMessage();
 
 private:
-    QString m_msgId;
+    int m_msgId;
     QString m_content;
     int m_intervalMs;
+    QTimer* m_timerMs;
 };

@@ -7,26 +7,10 @@
 #include <QDebug>
 
 
-MulticastSender::MulticastSender(QObject *parent)
-    : QObject(parent)
+MulticastSender::MulticastSender( QObject *parent)
+    :  QObject(parent)
 {
     qDebug() << "[Sender] MulticastSender constructed";
-    connect(&m_timerMs1, &QTimer::timeout, this, [this]() {
-        qDebug() << "[Sender] Timer MS1 timeout, sending message";
-        for (const Message* msg : m_messages) {
-            if (msg->msgId() == "ms1") {
-                broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
-            }
-        }
-    });
-    connect(&m_timerMs2, &QTimer::timeout, this, [this]() {
-        qDebug() << "[Sender] Timer MS2 timeout, sending message";
-        for (const Message* msg : m_messages) {
-            if (msg->msgId() == "ms2") {
-                broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
-            }
-        }
-    });
 }
 
 
@@ -65,96 +49,50 @@ void MulticastSender::removeTarget(const QString &ip, int port)
     }
 }
 
-
-void MulticastSender::startMs1(const QString &content, int intervalMs)
+void MulticastSender::startSendMessage(const int id, const QString &content, int intervalMs , QTimer &timerMs)
 {
-    qDebug() << "[Sender] startMs1 called, content:" << content << ", intervalMs:" << intervalMs;
-    // Tạo object Message động cho ms1
-    Message* msg = new Message("ms1", content, intervalMs);
-    m_messages.append(msg);
-    m_timerMs1.start(intervalMs);
-    // Gửi ngay message vừa tạo
-    broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
+    qDebug() << "[Sender] Message " << id << " called, content:" << content << ", intervalMs:" << intervalMs;
+    broadcastMessage(id, content, intervalMs);
+    timerMs.disconnect();
+    connect(&timerMs, &QTimer::timeout, this, [this, id, content, intervalMs]() {
+        qDebug() << "[Sender] Timer" << id << " timeout, sending message";
+        broadcastMessage(id, content, intervalMs);
+    });
+    timerMs.start(intervalMs);
 }
 
-
-void MulticastSender::stopMs1()
+void MulticastSender::stopSendMessage( Message* message)
 {
-    qDebug() << "[Sender] stopMs1 called";
-    m_timerMs1.stop();
-    // Xóa các Message có msgId == "ms1"
-    for (int i = m_messages.size() - 1; i >= 0; --i) {
-        if (m_messages[i]->msgId() == "ms1") {
-            delete m_messages[i];
-            m_messages.removeAt(i);
+    message->timerMs()->stop();
+}
+
+void MulticastSender::broadcastMessage(const int &msgId, const QString &content, int intervalMs)
+{
+    // 1. Đóng gói tham số vào JSON
+    QJsonObject jsonObj;
+    jsonObj["id"] = msgId;
+    jsonObj["content"] = content;
+    jsonObj["interval"] = intervalMs;
+    jsonObj["timestamp"] = static_cast<qint64>(QDateTime::currentSecsSinceEpoch());
+
+    // 2. Chuyển đổi sang QByteArray (Compact để tối ưu gói tin UDP)
+    QByteArray datagram = QJsonDocument(jsonObj).toJson(QJsonDocument::Compact);
+
+    // 3. Kiểm tra danh sách đích
+    if (m_targets.isEmpty()) {
+        qWarning() << "[Sender] No targets defined to broadcast.";
+        return;
+    }
+
+    // 4. Gửi đến tất cả các đích (targets)
+    qDebug() << "[Sender] Broadcasting Message ID:" << msgId << "to" << m_targets.size() << "targets";
+
+    for (const auto &target : std::as_const(m_targets)) {
+        // target.first thường là QHostAddress, target.second là port (quint16)
+        qint64 bytesWritten = m_udpSocket.writeDatagram(datagram, target.first, target.second);
+
+        if (bytesWritten == -1) {
+            qCritical() << "[Sender] Failed to send to" << target.first.toString() << ":" << target.second;
         }
     }
-}
-
-
-void MulticastSender::startMs2(const QString &content, int intervalMs)
-{
-    qDebug() << "[Sender] startMs2 called, content:" << content << ", intervalMs:" << intervalMs;
-    // Tạo object Message động cho ms2
-    Message* msg = new Message("ms2", content, intervalMs);
-    m_messages.append(msg);
-    m_timerMs2.start(intervalMs);
-    // Gửi ngay message vừa tạo
-    broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
-}
-
-
-void MulticastSender::stopMs2()
-{
-    qDebug() << "[Sender] stopMs2 called";
-    m_timerMs2.stop();
-    // Xóa các Message có msgId == "ms2"
-    for (int i = m_messages.size() - 1; i >= 0; --i) {
-        if (m_messages[i]->msgId() == "ms2") {
-            delete m_messages[i];
-            m_messages.removeAt(i);
-        }
-    }
-}
-
-
-void MulticastSender::sendMs3(const QString &content)
-{
-    qDebug() << "[Sender] sendMs3 called, content:" << content;
-    // Tạo object Message động cho ms3 (one-time)
-    Message* msg = new Message("ms3", content, 0);
-    m_messages.append(msg);
-    broadcastMessage(msg->msgId(), msg->content(), msg->intervalMs());
-    // Xóa ngay sau khi gửi
-    for (int i = m_messages.size() - 1; i >= 0; --i) {
-        if (m_messages[i]->msgId() == "ms3") {
-            delete m_messages[i];
-            m_messages.removeAt(i);
-        }
-    }
-}
-
-
-void MulticastSender::broadcastMessage(const QString &msgId, const QString &content, int intervalMs)
-{
-    // Serialize tất cả message thành JSON và gửi
-    for (const Message* msg : m_messages) {
-        QByteArray datagram = QJsonDocument(msg->toJson()).toJson(QJsonDocument::Compact);
-        qDebug() << "[Sender] broadcastMessage called, msgId:" << msg->msgId() << ", content:" << msg->content() << ", intervalMs:" << msg->intervalMs() << ", targets:" << m_targets.size();
-        for (const auto &target : m_targets) {
-            qDebug() << "[Sender] Sending datagram to" << target.first.toString() << ":" << target.second << ", data:" << datagram;
-            m_udpSocket.writeDatagram(datagram, target.first, target.second);
-        }
-    }
-}
-
-QByteArray MulticastSender::createJsonMessage(const QString &msgId, const QString &content, int intervalMs) const
-{
-    QJsonObject obj;
-    obj["msg_id"] = msgId;
-    obj["content"] = content;
-    obj["interval_ms"] = intervalMs;
-    obj["timestamp"] = static_cast<qint64>(QDateTime::currentSecsSinceEpoch());
-    QJsonDocument doc(obj);
-    return doc.toJson(QJsonDocument::Compact);
 }

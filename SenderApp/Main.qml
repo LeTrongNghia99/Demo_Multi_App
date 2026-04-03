@@ -8,7 +8,7 @@ ApplicationWindow {
     property bool receiver1Connected: false
     property bool receiver2Connected: false
     visible: true
-    width: 500
+    width: 700
     height: 600
     title: "UDP Multicast Sender"
 
@@ -93,59 +93,83 @@ ApplicationWindow {
             }
         }
 
+        Button{
+            id: addMsgBtn
+            Layout.alignment: Qt.AlignHCenter
+            contentItem: Text {
+                text: "Add Message"
+                color: "black"
+                font: control.font
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                anchors.fill: parent
+            }
+            onClicked: {
+                MessageController.addMessage()
+            }  
+        }
+
+
         GroupBox {
-            title: "MS1 (Continuous)"
+            anchors{
+                top:addMsgBtn.bottom
+                topMargin: 50
+            }
+
+            title: "Messages"
             Layout.fillWidth: true
-            RowLayout {
-                spacing: 8
-                Label { text: "Content:" }
-                TextField { id: ms1Content; width: 120 }
-                Label { text: "Interval (ms):" }
-                SpinBox { id: ms1Interval; from: 100; to: 10000; value: 1000; stepSize: 100; width: 80 }
-                Button {
-                    text: "Start Timer"
-                    onClicked: sender.startMs1(ms1Content.text, ms1Interval.value)
-                }
-                Button {
-                    text: "Stop Timer"
-                    onClicked: sender.stopMs1()
+            ListView {
+                id: messageList
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 300
+                model: MessageController
+                delegate: Rectangle {
+                    property bool isClickedFirsTime : false
+                    width: messageList.width
+                    height: 50
+                    color: index % 2 === 0 ? "#f5f5f5" : "#e0e0e0"
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 8
+                        Label { text: "ID: " + msgId; width: 50 }
+                        Label { text: "Content:"; width: 60 }
+                        TextField {
+                            text: content
+                            width: 120
+                            // Có thể thêm onTextChanged để cập nhật model nếu muốn\
+                            onTextChanged: {
+                                MessageController.updateContent(msgId, text)
+                            }
+                        }
+                        Label { text: "Interval (ms):"; width: 90 }
+                        SpinBox {
+                            value: intervalMs
+                            from: 0; to: 10000; stepSize: 100; width: 80
+                            // Có thể thêm onValueChanged để cập nhật model nếu muốn
+                            onValueChanged: {
+                                MessageController.updateInterval(msgId, value)
+                            }
+                        }
+                        Button {
+                            text: "Start Send"
+                            onClicked: {
+                                MessageController.startSendMessage(msgId,sender)
+                            }
+                        }
+                        Button{
+                            text: "Stop Send"
+                            onClicked: MessageController.stopSendMessage(msgId,sender)
+                        }
+                        Button {
+                            text: "Delete Message"
+                            onClicked: MessageController.deleteMessage(msgId)
+                        }
+                    }
                 }
             }
         }
 
-        GroupBox {
-            title: "MS2 (Continuous)"
-            Layout.fillWidth: true
-            RowLayout {
-                spacing: 8
-                Label { text: "Content:" }
-                TextField { id: ms2Content; width: 120 }
-                Label { text: "Interval (ms):" }
-                SpinBox { id: ms2Interval; from: 100; to: 10000; value: 2000; stepSize: 100; width: 80 }
-                Button {
-                    text: "Start Timer"
-                    onClicked: sender.startMs2(ms2Content.text, ms2Interval.value)
-                }
-                Button {
-                    text: "Stop Timer"
-                    onClicked: sender.stopMs2()
-                }
-            }
-        }
-
-        GroupBox {
-            title: "MS3 (One-time)"
-            Layout.fillWidth: true
-            RowLayout {
-                spacing: 8
-                Label { text: "Content:" }
-                TextField { id: ms3Content; width: 120 }
-                Button {
-                    text: "Send Now"
-                    onClicked: sender.sendMs3(ms3Content.text)
-                }
-            }
-        }
         Item { Layout.fillHeight: true } // Spacer
     }
 }
