@@ -70,7 +70,7 @@ void MulticastSender::broadcastMessage(const int &msgId, const QString &content,
 {
     // 1. Đóng gói tham số vào JSON
     QJsonObject jsonObj;
-    jsonObj["id"] = msgId;
+    jsonObj["msgId"] = msgId;
     jsonObj["content"] = content;
     jsonObj["interval"] = intervalMs;
     jsonObj["timestamp"] = static_cast<qint64>(QDateTime::currentSecsSinceEpoch());

@@ -55,7 +55,7 @@ void MulticastReceiver::readPendingDatagrams()
             continue;
         }
         QJsonObject obj = doc.object();
-        QString msgId = obj.value("msg_id").toString();
+        QString msgId = obj.value("msgId").toString();
         QString content = obj.value("content").toString();
         qint64 timestamp = obj.value("timestamp").toVariant().toLongLong();
         QString timeStr = QDateTime::fromSecsSinceEpoch(timestamp).toString("yyyy-MM-dd HH:mm:ss");
