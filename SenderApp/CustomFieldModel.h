@@ -21,6 +21,8 @@ public:
 
     Q_INVOKABLE void addField(const QString& key, const QString& value);
     Q_INVOKABLE void updateField(int index, const QString& key, const QString& value);
+    Q_INVOKABLE void updateKey(int index, const QString& key);
+    Q_INVOKABLE void updateValue(int index, const QString& value);
     Q_INVOKABLE void removeField(int index);
 
     QList<CustomField*> fields() const { return m_fields; }

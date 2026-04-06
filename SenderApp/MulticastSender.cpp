@@ -49,16 +49,17 @@ void MulticastSender::removeTarget(const QString &ip, int port)
     }
 }
 
-void MulticastSender::startSendMessage(const int id, const QString &content, int intervalMs , QTimer &timerMs)
+void MulticastSender::startSendMessage(Message *message)
 {
-    qDebug() << "[Sender] Message " << id << " called, content:" << content << ", intervalMs:" << intervalMs;
-    broadcastMessage(id, content, intervalMs);
-    timerMs.disconnect();
-    connect(&timerMs, &QTimer::timeout, this, [this, id, content, intervalMs]() {
-        qDebug() << "[Sender] Timer" << id << " timeout, sending message";
-        broadcastMessage(id, content, intervalMs);
+    qDebug() << "[Sender] Message " << message->msgId() << " called, content:" << message->content() << ", intervalMs:" << message->intervalMs();
+    broadcastMessage(message);
+    QTimer* timerMs = message->timerMs();
+    timerMs->disconnect();
+    connect(&*timerMs, &QTimer::timeout, this, [this, message]() {
+        qDebug() << "[Sender] Timer of message ID: " << message->msgId() << " timeout, sending message";
+        broadcastMessage(message);
     });
-    timerMs.start(intervalMs);
+    timerMs->start(message->intervalMs());
 }
 
 void MulticastSender::stopSendMessage( Message* message)
@@ -66,14 +67,54 @@ void MulticastSender::stopSendMessage( Message* message)
     message->timerMs()->stop();
 }
 
-void MulticastSender::broadcastMessage(const int &msgId, const QString &content, int intervalMs)
+void MulticastSender::startSendGroupMessage(const QList<Message *> &messages, const int& intervalGroupMs)
+{
+    for (int i = 0; i < messages.size(); ++i) {
+
+        Message* msg = messages[i];
+        msg->setIntervalMs(intervalGroupMs);
+
+        // Gửi lần đầu theo thứ tự, mỗi message delay i*100 ms so với message trước đó để đảm bảo thứ tự khi gửi
+        QTimer::singleShot(i*100 , this, [this, msg]() {
+            startSendMessage(msg); // startSendMessage sẽ gửi lần đầu và start timer lặp lại
+        });
+    }
+}
+
+void MulticastSender::stopSendGroupMessage(const QList<Message *> &messages)
+{
+    for (int i = 0; i < messages.size(); ++i) {
+        stopSendMessage(messages[i]);
+    }
+}
+
+void MulticastSender::sendGroupMessageFollowOder(const QList<Message *> &messages)
+{
+    if (messages.isEmpty()) return;
+    broadcastMessage(messages[0]);
+
+    for (int i = 1; i < messages.size(); ++i) {
+        QTimer::singleShot(i*1000, this, [this ,&messages, i]() {
+            broadcastMessage(messages[i]);
+        });
+    }
+}
+
+
+void MulticastSender::broadcastMessage(Message* message)
 {
     // 1. Đóng gói tham số vào JSON
     QJsonObject jsonObj;
-    jsonObj["msgId"] = msgId;
-    jsonObj["content"] = content;
-    jsonObj["interval"] = intervalMs;
+    jsonObj["msgId"] = message->msgId();
+    jsonObj["content"] = message->content();
+    jsonObj["interval"] = message->intervalMs();
     jsonObj["timestamp"] = static_cast<qint64>(QDateTime::currentSecsSinceEpoch());
+
+    QList<CustomField*> customFieldList = message->customFieldModel()->fields();
+    for(int i = 0; i < customFieldList.size(); i++ ){
+        qDebug() << "[Sender App] Key " << customFieldList[i]->key() << " value " << customFieldList[i]->value() ;
+        jsonObj[customFieldList[i]->key()] = customFieldList[i]->value();
+    }
 
     // 2. Chuyển đổi sang QByteArray (Compact để tối ưu gói tin UDP)
     QByteArray datagram = QJsonDocument(jsonObj).toJson(QJsonDocument::Compact);
@@ -85,7 +126,7 @@ void MulticastSender::broadcastMessage(const int &msgId, const QString &content,
     }
 
     // 4. Gửi đến tất cả các đích (targets)
-    qDebug() << "[Sender] Broadcasting Message ID:" << msgId << "to" << m_targets.size() << "targets";
+    qDebug() << "[Sender] Broadcasting Message ID:" << message->msgId() << "to" << m_targets.size() << "targets";
 
     for (const auto &target : std::as_const(m_targets)) {
         // target.first thường là QHostAddress, target.second là port (quint16)

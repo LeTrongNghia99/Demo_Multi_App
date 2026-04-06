@@ -1,10 +1,11 @@
 #include "Message.h"
 
-Message::Message(const int msgId, const QString &content, int intervalMs , QObject *parent)
-    : m_msgId(msgId), m_content(content), m_intervalMs(intervalMs) ,QObject(parent)
+Message::Message(QObject *parent)
+    : QObject(parent)
 {
     m_timerMs = new QTimer(this);
     m_customFieldModel = new CustomFieldModel(this);
+    m_intervalMs = 1000;
 }
 
 int Message::msgId() const { return m_msgId; }
@@ -30,4 +31,12 @@ void Message::setCustomFieldModel(CustomFieldModel *newCustomFieldModel)
         return;
     m_customFieldModel = newCustomFieldModel;
     emit customFieldModelChanged();
+}
+
+void Message::setMsgId(int newMsgId)
+{
+    if (m_msgId == newMsgId)
+        return;
+    m_msgId = newMsgId;
+    emit msgIdChanged();
 }

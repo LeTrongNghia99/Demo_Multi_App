@@ -21,6 +21,14 @@ ApplicationWindow {
         id: sender
     }
 
+    Message{
+        id: message_1
+    }
+
+    Message{
+        id: message_2
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 16
@@ -93,175 +101,185 @@ ApplicationWindow {
             }
         }
 
-        // Button{
-        //     id: addMsgBtn
-        //     Layout.alignment: Qt.AlignHCenter
-        //     contentItem: Text {
-        //         text: "Add Message"
-        //         color: "black"
-        //         font: control.font
-        //         horizontalAlignment: Text.AlignHCenter
-        //         verticalAlignment: Text.AlignVCenter
-        //         anchors.fill: parent
-        //     }
-        //     onClicked: {
-        //         MessageController.addMessage()
-        //     }
-        // }
-
-        // GroupBox {
-        //     anchors{
-        //         top:addMsgBtn.bottom
-        //         topMargin: 50
-        //     }
-
-        //     title: "Messages"
-        //     Layout.fillWidth: true
-
-
-            // ListView {
-            //     id: messageList
-            //     anchors.left: parent.left
-            //     anchors.right: parent.right
-            //     height: 300
-            //     model: MessageController
-            //     delegate: Rectangle {
-            //         property bool isClickedFirsTime : false
-            //         width: messageList.width
-            //         height: 50
-            //         color: index % 2 === 0 ? "#f5f5f5" : "#e0e0e0"
-            //         RowLayout {
-            //             anchors.fill: parent
-            //             spacing: 8
-            //             Label { text: "ID: " + msgId; width: 50 }
-            //             Label { text: "Content:"; width: 60 }
-            //             TextField {
-            //                 text: content
-            //                 width: 120
-            //                 // Có thể thêm onTextChanged để cập nhật model nếu muốn\
-            //                 onTextChanged: {
-            //                     MessageController.updateContent(msgId, text)
-            //                 }
-            //             }
-            //             Label { text: "Interval (ms):"; width: 90 }
-            //             SpinBox {
-            //                 value: intervalMs
-            //                 from: 0; to: 10000; stepSize: 100; width: 80
-            //                 // Có thể thêm onValueChanged để cập nhật model nếu muốn
-            //                 onValueChanged: {
-            //                     MessageController.updateInterval(msgId, value)
-            //                 }
-            //             }
-            //             Button {
-            //                 text: "Start Send"
-            //                 onClicked: {
-            //                     MessageController.startSendMessage(msgId,sender)
-            //                 }
-            //             }
-            //             Button{
-            //                 text: "Stop Send"
-            //                 onClicked: MessageController.stopSendMessage(msgId,sender)
-            //             }
-            //             Button {
-            //                 text: "Delete Message"
-            //                 onClicked: MessageController.deleteMessage(msgId)
-            //             }
-            //         }
-            //     }
-            // }
-        // }
 
         GroupBox {
             title: "Messages"
             Layout.fillWidth: true
+            Layout.preferredWidth: parent.width
             Layout.fillHeight: true
             RowLayout {
                 anchors.fill: parent
                 spacing: 5
 
-                // Phần 1: Message 1
-                Rectangle {
-                    color: "#f5f5f5"
-                    radius: 8
-                    border.color: "#cccccc"
-                    Layout.preferredWidth:  parent.width / 4
-                    Layout.fillHeight: true
-                    ColumnLayout {
+                Repeater {
+                    model: [
+                        { messageNum: 1, messageObj: message_1 },
+                        { messageNum: 2, messageObj: message_2 }
+                    ]
 
-                        spacing: 15
-                        Label { text: "Message 1"}
-                        RowLayout{
-                            Label { text: "Content:"; }
-                            TextField { id: msg1Content; width: 200; placeholderText: "" }
+                    Rectangle {
+                        id: msRect
+                        color: "#f5f5f5"
+                        radius: 8
+                        border.color: "#cccccc"
+                        Layout.preferredWidth: parent.width / 7 * 2
+                        Layout.fillHeight: true
+                        property bool messageIsSending: false
+                        property var messageObj: modelData.messageObj
+                        
+                        ColumnLayout {
+                            spacing: 15
+
+                            GridLayout {
+                                columns: 2
+                                Layout.fillWidth: true
+                                Layout.margins: 5
+                                rowSpacing: 10
+                                columnSpacing: 10
+
+                                Label { text: "Message " + modelData.messageNum}
+                                RowLayout {
+                                    Button {
+                                        text: " Start Send "
+                                        onClicked: {
+                                            sender.startSendMessage(modelData.messageObj)
+                                            msRect.messageIsSending = true
+                                        }
+                                    }
+                                    Button {
+                                        text: "     Stop     "
+                                        onClicked: {
+                                            sender.stopSendMessage(modelData.messageObj)
+                                            msRect.messageIsSending = false
+                                        }
+                                    }
+                                }
+
+                                Label { text: "Content:" }
+                                TextField {
+                                    Layout.fillWidth: true
+                                    placeholderText: modelData.messageObj.content
+                                    onTextChanged: modelData.messageObj.content = text
+                                    enabled: !msRect.messageIsSending
+                                }
+
+                                Label { text: "Interval (ms):" }
+                                SpinBox {
+                                    from: 0; to: 10000; value: modelData.messageObj.intervalMs; stepSize: 100
+                                    Layout.preferredWidth: 70
+                                    onValueChanged: modelData.messageObj.intervalMs = value
+                                    editable: true
+                                    enabled: !msRect.messageIsSending
+                                }
+                            }
+
+                            Button {
+                                text: "Add Field"
+                                onClicked: {
+                                    modelData.messageObj.customFieldModel.addField("", "")
+                                }
+                                enabled: !msRect.messageIsSending
+                            }
+
+                            ListView {
+                                Layout.preferredWidth: msRect.width
+                                Layout.preferredHeight: contentHeight
+                                model: modelData.messageObj.customFieldModel
+                                spacing: 5
+                                clip: true
+                                interactive: false
+
+                                delegate: Rectangle {
+                                    width: msRect.width
+                                    height: 40
+                                    color: "#ffffff"
+                                    border.width: 1
+                                    border.color: "#dddddd"
+                                    radius: 3
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 5
+                                        spacing: 8
+
+                                        TextField {
+                                            Layout.fillWidth: true
+                                            placeholderText: "Key"
+                                            text: key
+                                            onTextChanged: msRect.messageObj.customFieldModel.updateKey(index,text)
+                                            enabled: !msRect.messageIsSending
+                                        }
+                                        TextField {
+                                            Layout.fillWidth: true
+                                            placeholderText: "Value"
+                                            text: value
+                                            onTextChanged: msRect.messageObj.customFieldModel.updateValue(index,text)
+                                            enabled: !msRect.messageIsSending
+                                        }
+                                        Button {
+                                            text: "X"
+                                            Layout.preferredWidth: 30
+                                            onClicked: msRect.messageObj.customFieldModel.removeField(index)
+                                            enabled: !msRect.messageIsSending
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                    }
+                                }
+                            }
                         }
-                        RowLayout{
-                            Label { text: "Interval (ms):"; }
-                            SpinBox { id: msg1Interval; from: 0; to: 10000; value: 1000; stepSize: 100; width: 100 }
-                        }
-
-                        Button { text: "Add Field"; onClicked: {/* TODO: logic thêm field cho message 1 */} }
-                    }
-                }
-
-                // Phần 2: Message 2
-                Rectangle {
-                    color: "#f5f5f5"
-                    radius: 8
-                    border.color: "#cccccc"
-                    Layout.preferredWidth: parent.width / 4
-                    Layout.fillHeight: true
-                    ColumnLayout {
-
-                        spacing: 15
-                        Label { text: "Message 2"}
-                        RowLayout{
-                            Label { text: "Content:"; }
-                            TextField { id: msg2Content; width: 200; placeholderText: "" }
-                        }
-                        RowLayout{
-                            Label { text: "Interval (ms):"; }
-                            SpinBox { id: msg2Interval; from: 0; to: 10000; value: 1000; stepSize: 100; width: 100 }
-                        }
-
-                        Button { text: "Add Field"; onClicked: {/* TODO: logic thêm field cho message 2 */} }
                     }
                 }
 
                 // Phần 3: Add Message + ListView
                 Rectangle {
+                    id: msGroupRect
                     color: "#f5f5f5"
                     radius: 8
                     border.color: "#cccccc"
-                    Layout.fillWidth: parent.width/5*3
+                    Layout.fillWidth: parent.width/7*3
                     Layout.fillHeight: true
+                    property bool isGroupSending: false
                     ColumnLayout {
                         anchors.fill: parent
                         spacing: 8
                         RowLayout{
-                            spacing: 15
+                            spacing: 5
 
                             Button {
                                 text: "Send All Interval (ms)"
                                 Layout.alignment: Qt.AlignHCenter
                                 onClicked: {
-
+                                    MessageController.startSendGroupMessage(sender)
+                                    msGroupRect.isGroupSending = true
                                 }
                             }
-                            SpinBox { id: interval; from: 0; to: 10000; value: 1000; stepSize: 100; width: 100 }
+                            SpinBox {
+                                id: interval; from: 0; to: 10000; value: MessageController.intervalGroupMs; stepSize: 100; width: 50
+                                onValueChanged:  MessageController.intervalGroupMs = value
+                                enabled: !msGroupRect.isGroupSending
+                            }
                             Button {
-                                text: "Send Follow Order"
+                                text: "Stop Send MS"
                                 Layout.alignment: Qt.AlignHCenter
                                 onClicked: {
-
+                                    MessageController.stopSendGroupMessage(sender)
+                                    msGroupRect.isGroupSending = false
                                 }
                             }
                         }
                         Button {
+                            text: "Send One Time Follow Order"
+                            onClicked: {
+                                MessageController.sendGroupMessageFollowOder(sender)
+                            }
+                        }
+                        Button {
                             text: "Add Message"
-                            // Layout.alignment: Qt.AlignHCenter
                             onClicked: {
                                 MessageController.addMessage()
+
                             }
+                            enabled: !msGroupRect.isGroupSending
                         }
 
                         ListView {
@@ -271,9 +289,8 @@ ApplicationWindow {
                             model: MessageController
                             spacing: 10
                             delegate: Rectangle {
-                                property bool isClickedFirsTime : false
                                 width: messageList.width
-                                height: Math.max(60 + fieldList.contentHeight + 20, 80)
+                                height: Math.max(60 + fieldList3.contentHeight + 20, 80)
                                 color: index % 2 === 0 ? "#f5f5f5" : "#e0e0e0"
                                 radius: 5
                                 border.width: 1
@@ -283,7 +300,7 @@ ApplicationWindow {
                                 ColumnLayout {
                                     anchors.fill: parent
                                     anchors.margins: 10
-                                    spacing: 8
+                                    spacing: 4
                                     
                                     RowLayout {
                                         id: messageRow
@@ -292,7 +309,7 @@ ApplicationWindow {
                                         spacing: 8
                                         
                                         Label { 
-                                            text: "ID: " + msgId
+                                            text: "ID " + msgId
                                             width: 50 
                                         }
                                         Label { 
@@ -305,6 +322,7 @@ ApplicationWindow {
                                             onTextChanged: {
                                                 MessageController.updateContent(msgId, text)
                                             }
+                                            enabled: !msGroupRect.isGroupSending
                                         }
                                         Button {
                                             text: "Add Field"
@@ -313,10 +331,13 @@ ApplicationWindow {
                                                     msgObj.customFieldModel.addField("", "")
                                                 }
                                             }
+                                            enabled: !msGroupRect.isGroupSending
                                         }
                                         Button {
-                                            text: "Delete Message"
+                                            text: "X"
+                                            Layout.preferredWidth: 30
                                             onClicked: MessageController.deleteMessage(msgId)
+                                            enabled: !msGroupRect.isGroupSending
                                         }
                                         Item { Layout.fillWidth: true }
                                     }
@@ -328,7 +349,7 @@ ApplicationWindow {
                                     }
                                     
                                     ListView {
-                                        id: fieldList
+                                        id: fieldList3
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: contentHeight
                                         model: msgObj ? msgObj.customFieldModel : null
@@ -337,7 +358,7 @@ ApplicationWindow {
                                         interactive: false
                                         
                                         delegate: Rectangle {
-                                            width: fieldList.width
+                                            width: fieldList3.width
                                             height: 40
                                             color: "#ffffff"
                                             border.width: 1
@@ -353,16 +374,21 @@ ApplicationWindow {
                                                     Layout.preferredWidth: 80
                                                     placeholderText: "Key"
                                                     text: key
+                                                    onTextChanged: msgObj.customFieldModel.updateKey(index,text)
+                                                    enabled: !msGroupRect.isGroupSending
                                                 }
                                                 TextField {
                                                     Layout.preferredWidth: 80
                                                     placeholderText: "Value"
                                                     text: value
+                                                    onTextChanged: msgObj.customFieldModel.updateValue(index,text)
+                                                    enabled: !msGroupRect.isGroupSending
                                                 }
                                                 Button {
                                                     text: "X"
                                                     Layout.preferredWidth: 30
                                                     onClicked: msgObj.customFieldModel.removeField(index)
+                                                    enabled: !msGroupRect.isGroupSending
                                                 }
                                                 Item { Layout.fillWidth: true }
                                             }

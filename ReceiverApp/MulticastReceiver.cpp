@@ -55,11 +55,20 @@ void MulticastReceiver::readPendingDatagrams()
             continue;
         }
         QJsonObject obj = doc.object();
-        QString msgId = obj.value("msg_id").toString();
+        QString msgId = QString::number(obj.value("msgId").toInt());
         QString content = obj.value("content").toString();
         qint64 timestamp = obj.value("timestamp").toVariant().toLongLong();
         QString timeStr = QDateTime::fromSecsSinceEpoch(timestamp).toString("yyyy-MM-dd HH:mm:ss");
+
+        QVariantMap customFields;
+        for (auto it = obj.begin(); it != obj.end(); ++it) {
+            QString key = it.key();
+            if (key != "msgId" && key != "content" && key != "interval" && key != "timestamp") {
+                customFields[key] = it.value().toString();
+            }
+        }
+
         qDebug() << "[ReceiverApp] Parsed message: msgId=" << msgId << ", content=" << content << ", timeStr=" << timeStr;
-        emit messageReceived(msgId, content, timeStr);
+        emit messageReceived(msgId, content, timeStr, customFields);
     }
 }

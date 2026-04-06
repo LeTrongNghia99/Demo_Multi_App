@@ -16,11 +16,15 @@ public:
 
     Q_INVOKABLE void addTarget(const QString &ip, int port);
     Q_INVOKABLE void removeTarget(const QString &ip, int port);
-    void startSendMessage(const int id, const QString &content, int intervalMs, QTimer &timerMs);
-    void stopSendMessage( Message* message);
+    Q_INVOKABLE void startSendMessage(Message* message);
+    Q_INVOKABLE void stopSendMessage( Message* message);
+    void startSendGroupMessage(const QList<Message *> &messages, const int& intervalGroupMs);
+    void stopSendGroupMessage(const QList<Message *> &messages);
+    void sendGroupMessageFollowOder(const QList<Message *> &messages);
 
 private:
-    void broadcastMessage(const int &msgId, const QString &content, int intervalMs);
+    void broadcastMessage(Message* message);
     QUdpSocket m_udpSocket;
     QList<QPair<QHostAddress, quint16>> m_targets;
 };
+  

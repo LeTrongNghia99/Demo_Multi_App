@@ -55,22 +55,36 @@ ApplicationWindow {
             model: logModel
             delegate: Rectangle {
                 width: logView.width
-                height: 48
+                height: 48 + (customFields ? Object.keys(customFields).length * 10 : 0)
                 border.color: "black"
                 border.width: 1
                 radius: 6
                 property string d_time: time !== undefined ? String(time) : ""
-                property int d_msgId: msgId !== undefined ? msgId : ""
+                property string d_msgId: msgId !== undefined ? String(msgId) : ""
                 property string d_content: content !== undefined ? String(content) : ""
-                RowLayout {
+                
+                Column {
                     anchors.fill: parent
-                    spacing: 8
-                    Text { text: '[' + d_time + ']'; width: 120; color: "black" }
-                    Text { text: '[Msg_Id: ' + d_msgId + ']'; width: 80; color: "black" }
-                    Text { text: 'Content: ' + d_content; elide: Text.ElideRight; width: parent.width - 220; color: "black" }
+                    anchors.margins: 5
+                    spacing: 2
+                    
+                    RowLayout {
+                        width: parent.width
+                        spacing: 8
+                        Text { text: '[' + d_time + ']'; width: 120; color: "black" }
+                        Text { text: '[Msg_Id: ' + d_msgId + ']'; width: 80; color: "black" }
+                        Text { text: '[Content: ' + d_content + ']'; elide: Text.ElideRight; Layout.fillWidth: true; color: "black" }
+                    }
+                    
+                    // Hiển thị customFields nếu có
+                    Repeater {
+                        model: customFields ? Object.keys(customFields) : []
+                        Text { text: '[' + modelData + ' : ' + customFields[modelData] + ']'; width: 80 ;color: "black"}
+                    }
                 }
+                
                 Component.onCompleted: {
-                    console.log("Delegate created:", d_time, d_msgId, d_content)
+                    console.log("Delegate created:", d_time, d_msgId, d_content, customFields)
                 }
             }
             property bool userAtEnd: true
@@ -84,20 +98,20 @@ ApplicationWindow {
                 userAtEnd = (logView.contentY + logView.height >= logView.contentHeight - autoScrollThreshold);
             }
         }
-            ListModel {
-                id: logModel
-                function appendLog(entry) {
-                    console.log("ListModel appendLog:", entry)
-                    append(entry)
-                }
+        ListModel {
+            id: logModel
+            function appendLog(entry) {
+                console.log("ListModel appendLog:", entry)
+                append(entry)
             }
-            Connections {
-                target: receiver
-                function onMessageReceived(msgId, content, time) {
-                    console.log("QML received:", msgId, content, time);
-                    logModel.appendLog({msgId: msgId, content: content, time: time});
-                }
+        }
+        Connections {
+            target: receiver
+            function onMessageReceived(msgId, content, time, customFields) {
+                console.log("QML received:", msgId, content, time, customFields);
+                logModel.appendLog({msgId: msgId, content: content, time: time, customFields: customFields});
             }
+        }
         }
         Item { Layout.fillHeight: true } // Spacer
     

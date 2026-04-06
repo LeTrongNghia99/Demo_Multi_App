@@ -23,7 +23,6 @@ QHash<int, QByteArray> CustomFieldModel::roleNames() const {
 }
 
 void CustomFieldModel::addField(const QString& key, const QString& value) {
-    qDebug() << "NghiaLT";
     beginInsertRows(QModelIndex(), m_fields.size(), m_fields.size());
     m_fields.append(new CustomField(key, value));
     endInsertRows();
@@ -34,6 +33,20 @@ void CustomFieldModel::updateField(int index, const QString& key, const QString&
     m_fields[index]->setKey(key);
     m_fields[index]->setValue(value);
     emit dataChanged(this->index(index), this->index(index), {KeyRole, ValueRole});
+}
+
+void CustomFieldModel::updateKey(int index, const QString& key) {
+    qDebug() << "[Sender App ] CustomFieldModel::updateKey ";
+    if (index < 0 || index >= m_fields.size()) return;
+    m_fields[index]->setKey(key);
+    emit dataChanged(this->index(index), this->index(index));
+}
+
+void CustomFieldModel::updateValue(int index, const QString& value) {
+    qDebug() << "[Sender App ] CustomFieldModel::updateValue ";
+    if (index < 0 || index >= m_fields.size()) return;
+    m_fields[index]->setValue(value);
+    emit dataChanged(this->index(index), this->index(index));
 }
 
 void CustomFieldModel::removeField(int index) {

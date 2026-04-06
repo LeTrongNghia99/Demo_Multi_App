@@ -13,7 +13,7 @@ public:
     Q_INVOKABLE bool joinGroup(const QString &ip, int port);
 
 signals:
-    void messageReceived(const QString &msgId, const QString &content, const QString &timeStr);
+    void messageReceived(const QString &msgId, const QString &content, const QString &timeStr, const QVariantMap &customFields);
 
 private slots:
     void readPendingDatagrams();
