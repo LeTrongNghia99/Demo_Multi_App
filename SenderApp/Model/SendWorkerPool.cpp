@@ -2,6 +2,7 @@
 #include <QtConcurrent>
 #include <QDebug>
 #include <QException>
+#include <QTimer>
 
 SendWorkerPool::SendWorkerPool(int maxThreads, QObject* parent)
     : QObject(parent), m_maxThreads(maxThreads)
@@ -23,59 +24,70 @@ SendWorkerPool::~SendWorkerPool()
     qDebug() << "[SendWorkerPool] Destroyed";
 }
 
-void SendWorkerPool::sendMessage( Message* msg, MulticastSender* sender)
+void SendWorkerPool::sendMessage(Message* msg, MulticastSender* sender)
 {
-
-    // Connect MulticastSender signal → pool signal
-    connect(sender, &MulticastSender::messageSendFinished,
-            this, [this, msg](Message* finishedMsg) {
-                // Callback khi MulticastSender emit messageSendFinished
-                if (finishedMsg->msgId() == msg->msgId()) {
-                    qDebug() << "[SendWorkerPool] Detected send finished:" << msg->msgId();
-
-                    // WHY: Emit từ main thread (automatic via Qt marshalling)
-                    // Signal từ sender→ slot chạy main thread
-                    emit sendFinished(msg->msgId());
-
-                    // Cleanup
-                    {
-                        QMutexLocker locker(&m_mutex);
-                        m_activeSends.remove(msg->msgId());
-                    }
-                }
-            },
-            Qt::UniqueConnection);  // WHY: UniqueConnection?
-                                    // Tránh duplicate connections nếu sendMessage call nhiều lần
-
-    QFuture<void> future = QtConcurrent::run(m_threadPool,[this, msg, sender]() {
-        try{
-            qDebug() << "[SendWorker] Start sending message" << msg->msgId()
-                  << "on thread" << QThread::currentThreadId();
-
-            // Gửi message trên background thread
-            // NIU: startSendMessage() sẽ block cho đến khi send xong
-            // Vì chạy trên worker thread, nên UI không bị block
-            sender->startSendMessage(msg);
-
-            qDebug() << "[SendWorker] Finished sending message" << msg->msgId();
-
-        } catch (const std::exception& e) {
-            qWarning() << "[SendWorker] Error sending message" << msg->msgId()
-                    << ":" << e.what();
-            emit sendError(msg->msgId(), QString::fromStdString(e.what()));
-        }
-    });
-
-    // WHY: Lock mutex khi modify m_activeSends?
-    // Vì main thread có thể call cancelSend() lúc worker thread read m_activeSends
-    // Mutex đảm bảo data consistency
-    {
-        QMutexLocker locker(&m_mutex);  // RAII: auto unlock khi scope exit
-        m_activeSends[msg->msgId()] = future;
+    if (!msg || !sender) {
+        qWarning() << "[SendWorkerPool] Invalid message or sender";
+        return;
     }
 
-    qDebug() << "[SendWorkerPool] Queued message" << msg->msgId()
-             << "- Active sends:" << activeCount();
+    int msgId = msg->msgId();
+    qDebug() << "[SendWorkerPool] Starting send for message" << msgId
+             << "with interval" << msg->intervalMs() << "ms";
+
+    QTimer* timer = msg->timerMs();
+    
+    // ✅ Disconnect cũ trước (nếu sendMessage được gọi lại cho message này)
+    disconnect(timer, nullptr, this, nullptr);
+    
+    // Lambda để dispatch send task
+    // ⚠️ Không dùng UniqueConnection vì lambda object khác nhau mỗi lần
+    auto sendTask = [this, msg, sender, msgId]() {
+        // Check nếu message bị stopped
+        if (msg->isStopped()) {
+            qDebug() << "[SendWorkerPool] Message" << msgId << "stopped, skipping send";
+            return;
+        }
+
+        // Dispatch send task vào thread pool
+        QFuture<void> future = QtConcurrent::run(m_threadPool, [this, msg, sender, msgId]() {
+            try {
+                qDebug() << "[SendWorker] Sending message" << msgId
+                         << "on thread" << QThread::currentThreadId();
+                
+                // ✅ Chỉ gửi broadcast (không loop + sleep!)
+                sender->broadcastMessage(msg);
+                
+                qDebug() << "[SendWorker] Send completed for message" << msgId;
+            } catch (const std::exception& e) {
+                qWarning() << "[SendWorker] Error sending message" << msgId
+                           << ":" << e.what();
+                emit sendError(msgId, QString::fromStdString(e.what()));
+            }
+        });
+
+        {
+            QMutexLocker locker(&m_mutex);
+            m_activeSends[msgId] = future;
+        }
+
+        qDebug() << "[SendWorkerPool] Dispatched send for message" << msgId
+                 << "- Active sends:" << activeCount();
+    };
+
+    // Connect timer timeout → gửi message
+    // ❌ Không dùng UniqueConnection (gây problem với lambda)
+    connect(timer, &QTimer::timeout, this, sendTask);
+
+    // Gửi lần đầu ngay lập tức
+    sendTask();
+
+    // Set interval từ message và start timer
+    timer->setInterval(msg->intervalMs());
+    timer->start();
+
+    qDebug() << "[SendWorkerPool] Timer started for message" << msgId
+             << "with interval" << msg->intervalMs() << "ms";
 }
 
 
@@ -100,7 +112,7 @@ void SendWorkerPool::sendGroupMessages( const QList<Message*>& msgs,
 void SendWorkerPool::sendGroupMessageFollowOder(const QList<Message *> &messages, MulticastSender* sender)
 {
     if (messages.isEmpty()) return;
-    sender->sendMessageOneTime(messages[0]);
+    sender->startSendMessage(messages[0]);
 
     for (int i = 1; i < messages.size(); ++i) {
         QTimer::singleShot(i*1000, this, [this, messages, sender, i]() {  // ← VALUE không &
@@ -110,7 +122,7 @@ void SendWorkerPool::sendGroupMessageFollowOder(const QList<Message *> &messages
                     qDebug() << "[SendWorker] Start sending message" << msg->msgId()
                     << "on thread" << QThread::currentThreadId();
 
-                    sender->sendMessageOneTime(msg);
+                    sender->startSendMessage(msg);
 
                 } catch (const std::exception& e) {
                     qWarning() << "[SendWorker] Error sending message" << msg->msgId()
@@ -129,25 +141,30 @@ void SendWorkerPool::sendGroupMessageFollowOder(const QList<Message *> &messages
 
 
 
-// void SendWorkerPool::cancelSend(int msgId)
-// {
+void SendWorkerPool::cancelSend(Message* message)
+{
+    int msgId = message->msgId();
+    QMutexLocker locker(&m_mutex);
 
-//     QMutexLocker locker(&m_mutex);
+    // WHY: Check nếu msgId exists trước cancel?
+    // Vì QMap::cancel() crash nếu key không exist
+    if (m_activeSends.contains(msgId)) {
 
-//     // WHY: Check nếu msgId exists trước cancel?
-//     // Vì QMap::cancel() crash nếu key không exist
-//     if (m_activeSends.contains(msgId)) {
-//         // WHY: QFuture::cancel() hủy task nếu chưa start
-//         // Nếu đã start, cancel sẽ fail (return false) nhưng không crash
-//         m_activeSends[msgId].cancel();
+        message->timerMs()->stop();
 
-//         // WHY: remove từ map?
-//         // Cleanup - tránh map bị bloat
-//         m_activeSends.remove(msgId);
+        // WHY: QFuture::cancel() hủy task nếu chưa start
+        // Nếu đã start, cancel sẽ fail (return false) nhưng không crash
+        m_activeSends[msgId].cancel();
 
-//         qDebug() << "[SendWorkerPool] Cancel message" << msgId;
-//     }
-// }
+        // WHY: remove từ map?
+        // Cleanup - tránh map bị bloat
+        m_activeSends.remove(msgId);
+
+
+
+        qDebug() << "[SendWorkerPool] Cancel message" << msgId;
+    }
+}
 
 void SendWorkerPool::cancelAll()
 {

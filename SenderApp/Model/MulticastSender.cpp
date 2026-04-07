@@ -51,36 +51,19 @@ void MulticastSender::removeTarget(const QString &ip, int port)
 
 void MulticastSender::startSendMessage(Message *message)
 {
-    qDebug() << "[Sender] Message " << message->msgId() << " called, content:" << message->content() << ", intervalMs:" << message->intervalMs();
-    broadcastMessage(message);
-    emit messageSendFinished(message);
-
-    while (!message->isStopped()) {
-        std::unique_lock<std::mutex> lock(*message->stopMutex());
-
-        // Sleep nhưng có thể bị interrupt nếu user stop
-        message->stopCV()->wait_for(
-            lock,
-            std::chrono::milliseconds(message->intervalMs()),
-            [message]() { return message->isStopped(); }
-        );
-
-        if (message->isStopped()) {
-            qDebug() << "[Sender] Message" << message->msgId() << "stopped";
-            break;
-        }
-
+    if (message) {
+        qDebug() << "[Sender] Message " << message->msgId() << " called, content:" << message->content() << ", intervalMs:" << message->intervalMs();
         broadcastMessage(message);
         emit messageSendFinished(message);
     }
 }
 
-void MulticastSender::stopSendMessage( Message* message)
-{
-    if (message) {
-        message->setIsStopped(true);  // ← Auto notify CV
-    }
-}
+// void MulticastSender::stopSendMessage( Message* message)
+// {
+//     if (message) {
+//         message->setIsStopped(true);  // ← Auto notify CV
+//     }
+// }
 
 // void MulticastSender::startSendGroupMessage(const QList<Message *> &messages, const int& intervalGroupMs)
 // {
@@ -115,12 +98,12 @@ void MulticastSender::stopSendMessage( Message* message)
 //     }
 // }
 
-void MulticastSender::sendMessageOneTime(Message* message)
-{
-    if (message) {
-        broadcastMessage(message);
-    }
-}
+// void MulticastSender::sendMessageOneTime(Message* message)
+// {
+//     if (message) {
+//         broadcastMessage(message);
+//     }
+// }
 
 
 void MulticastSender::broadcastMessage(Message* message)

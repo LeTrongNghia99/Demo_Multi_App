@@ -48,7 +48,6 @@ void MessageController::startSendMessage(Message* message)
     
     if (message) {
         qDebug() << "[MessageController] Starting send for message" << message->msgId();
-        message->setIsStopped(false);
         m_sendWorkerPool->sendMessage(message , m_multicastSender);
     } else {
         qWarning() << "[MessageController] Message not found:" << message->msgId();
@@ -64,8 +63,7 @@ void MessageController::stopSendMessage(Message* message)
     
     if (message) {
         qDebug() << "[MessageController] Stopping send for message" << message->msgId();
-        message->setIsStopped(true);
-        // m_sendWorkerPool->cancelSend(message->msgId());
+        m_sendWorkerPool->cancelSend(message);
     } else {
         qWarning() << "[MessageController] Message not found:" << message->msgId();
     }

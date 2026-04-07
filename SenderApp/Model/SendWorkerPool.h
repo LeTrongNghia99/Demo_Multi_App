@@ -63,12 +63,12 @@ public:
 
     /**
      * @brief Dừng một send operation đang chạy
-     * @param msgId: Message ID cần dừng
+     * @param message: Message ID cần dừng
      *
      * WHY: Cancel pattern - có thể hủy send được
      *      QFuture hỗ trợ cancel(), QMutex tránh race condition
      */
-    void cancelSend(int msgId);
+    void cancelSend(Message *message);
 
     /**
      * @brief Dừng tất cả send operations
